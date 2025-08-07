@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Pomodoro Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#ff5252">
+  <style>
+    :root{
+      --accent: #ff5252;
+      --bg1: #ff9a9e;
+      --bg2: #fad0c4;
+      --text: #0f172a;
+      --muted: #334155;
+      --ring-track: rgba(255,255,255,0.25);
+      --panel: rgba(255,255,255,0.25);
+      --glass: rgba(255,255,255,0.55);
+      --shadow: 0 10px 30px rgba(0,0,0,0.15);
+      --radius: 18px;
+      --ring-thickness: 18px;
+      --ring-angle: 0deg; /* progress angle */
+    }
+    *{box-sizing:border-box;}
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+    }
+    body{
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      background-attachment: fixed;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 24px;
+      transition: background 0.6s ease;
+    }
+    .app{
+      width: min(860px, 100%);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      backdrop-filter: blur(8px);
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.5);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+    }
+    .dot{
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(255,255,255,0.35), 0 0 24px var(--accent);
+      transition: 0.4s;
+    }
+    h1{
+      font-size: 18px;
+      margin:0;
+      letter-spacing:0.4px;
+    }
+    .phase{
+      font-weight:600;
+      color: var(--muted);
+    }
+    .header .actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .icon-btn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,0.6);
+      background: var(--glass);
+      color: var(--text);
+      border-radius: 12px;
+      padding:10px 12px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+      transition: transform 0.05s ease, background 0.2s ease, border 0.2s ease;
+      box-shadow: var(--shadow);
+      user-select:none;
+    }
+    .icon-btn:active{ transform: translateY(1px); }
+    .main{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap: 18px;
+    }
+    @media (max-width: 900px){
+      .main{ grid-template-columns: 1fr; }
+    }
+    .panel{
+      backdrop-filter: blur(10px);
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.5);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .timer-wrap{
+      display:grid;
+      grid-template-columns: 1fr;
+      align-items:center;
+      justify-items:center;
+      gap: 18px;
+      min-height: 420px;
+    }
+    .ring{
+      position:relative;
+      width: clamp(220px, 55vmin, 360px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background:
+        conic-gradient(var(--accent) var(--ring-angle), var(--ring-track) 0deg);
+      display:grid;
+      place-items:center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.25);
+      transition: background 0.2s linear;
+    }
+    .ring::after{
+      content:"";
+      position:absolute;
+      inset: clamp(18px, 4.8vmin, 28px);
+      background: rgba(255,255,255,0.55);
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,0.5);
+      box-shadow: inset 0 8px 40px rgba(0,0,0,0.10);
+      backdrop-filter: blur(6px);
+    }
+    .time-stack{
+      position:absolute;
+      display:grid;
+      place-items:center;
+      text-align:center;
+      padding: 12px;
+      z-index:1;
+      user-select:none;
+    }
+    .time{
+      font-size: clamp(40px, 8vmin, 64px);
+      font-weight:800;
+      letter-spacing:1px;
+      line-height:1;
+    }
+    .sub{
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing:0.3px;
+    }
+    .controls{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+    }
+    .btn{
+      appearance:none;
+      border:none;
+      background: var(--accent);
+      color:white;
+      font-weight:700;
+      padding:12px 16px;
+      border-radius: 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.35) inset;
+      cursor:pointer;
+      transition: transform 0.05s ease, filter 0.2s ease, background 0.2s ease;
+      letter-spacing:0.4px;
+    }
+    .btn.secondary{
+      background: rgba(255,255,255,0.75);
+      color: var(--text);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .stats{
+      display:flex;
+      gap: 14px;
+      justify-content:center;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .settings h3{
+      margin:0 0 10px 0;
+      font-size: 16px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 110px;
+      gap: 12px;
+      align-items:center;
+      margin-bottom: 12px;
+    }
+    .row.wide{
+      grid-template-columns: 1fr;
+    }
+    label{ color: var(--muted); font-size: 14px; }
+    input[type="number"]{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.85);
+      outline:none;
+      font-size:14px;
+    }
+    input[type="range"]{
+      width:100%;
+    }
+    .switch{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+    }
+    .switch input{ display:none; }
+    .toggle{
+      width: 44px; height: 26px; border-radius: 999px;
+      background: rgba(0,0,0,0.15);
+      position:relative; transition: 0.25s;
+    }
+    .toggle::after{
+      content:"";
+      position:absolute; top:3px; left:3px;
+      width:20px; height:20px; border-radius:50%;
+      background:white; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      transition: transform 0.25s;
+    }
+    .switch input:checked + .toggle{
+      background: var(--accent);
+    }
+    .switch input:checked + .toggle::after{
+      transform: translateX(18px);
+    }
+    .hint{ color: var(--muted); font-size: 12px; }
+    .footer{
+      text-align:center; color: var(--muted); font-size: 12px;
+    }
+    .kbd{
+      background: rgba(255,255,255,0.8);
+      border:1px solid rgba(0,0,0,0.12);
+      padding:2px 6px;
+      border-radius:6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="brand">
+        <div class="dot"></div>
+        <h1>Pomodoro <span class="phase">Work</span></h1>
+      </div>
+      <div class="actions">
+        <button id="btnWork" class="icon-btn" title="Switch to Work">🏁 Work</button>
+        <button id="btnShort" class="icon-btn" title="Switch to Short Break">🌿 Short</button>
+        <button id="btnLong" class="icon-btn" title="Switch to Long Break">🌙 Long</button>
+        <button id="btnSettings" class="icon-btn" title="Settings">⚙️ Settings</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="panel">
+        <div class="timer-wrap">
+          <div class="ring" id="ring">
+            <div class="time-stack">
+              <div class="time" id="time">25:00</div>
+              <div class="sub" id="sub">Focus time</div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <button id="btnStart" class="btn">Start</button>
+            <button id="btnReset" class="btn secondary">Reset</button>
+            <button id="btnSkip" class="btn secondary">Skip</button>
+          </div>
+
+          <div class="stats">
+            <div>Sessions completed: <strong id="completed">0</strong></div>
+            <div>Cycle: <strong id="cycle">0/4</strong></div>
+          </div>
+
+          <div class="footer">
+            Shortcuts: <span class="kbd">Space</span> start/pause • <span class="kbd">R</span> reset • <span class="kbd">N</span> next
+          </div>
+        </div>
+      </div>
+
+      <div class="panel settings" id="settings">
+        <h3>Settings</h3>
+        <div class="row">
+          <label>Work minutes</label>
+          <input id="inWork" type="number" min="1" max="180" step="1" />
+        </div>
+        <div class="row">
+          <label>Short break minutes</label>
+          <input id="inShort" type="number" min="1" max="60" step="1" />
+        </div>
+        <div class="row">
+          <label>Long break minutes</label>
+          <input id="inLong" type="number" min="1" max="120" step="1" />
+        </div>
+        <div class="row">
+          <label>Long break every N work sessions</label>
+          <input id="inEvery" type="number" min="2" max="12" step="1" />
+        </div>
+        <div class="row wide">
+          <label class="switch">
+            <input id="inAuto" type="checkbox" />
+            <span class="toggle"></span>
+            <span>Auto-start next session</span>
+          </label>
+        </div>
+        <div class="row">
+          <label>Sound volume</label>
+          <input id="inVolume" type="range" min="0" max="100" step="1" />
+        </div>
+        <div class="hint">Notifications will appear at the end of each session (allow permission when prompted).</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const $ = s => document.querySelector(s);
+      const ring = $('#ring');
+      const timeEl = $('#time');
+      const subEl = $('#sub');
+      const phaseEl = document.querySelector('.phase');
+      const completedEl = $('#completed');
+      const cycleEl = $('#cycle');
+
+      const btnStart = $('#btnStart');
+      const btnReset = $('#btnReset');
+      const btnSkip  = $('#btnSkip');
+      const btnSettings = $('#btnSettings');
+      const btnWork = $('#btnWork');
+      const btnShort = $('#btnShort');
+      const btnLong = $('#btnLong');
+
+      const inWork = $('#inWork');
+      const inShort = $('#inShort');
+      const inLong = $('#inLong');
+      const inEvery = $('#inEvery');
+      const inAuto = $('#inAuto');
+      const inVolume = $('#inVolume');
+      const settingsPanel = $('#settings');
+
+      const defaultSettings = {
+        work: 25,
+        short: 5,
+        long: 15,
+        every: 4,
+        auto: false,
+        volume: 60
+      };
+      let S = loadSettings();
+
+      let state = {
+        phase: 'work', // 'work' | 'short' | 'long'
+        remaining: S.work * 60 * 1000,
+        total: S.work * 60 * 1000,
+        running: false,
+        endAt: null,
+        interval: null,
+        completed: 0, // completed work sessions
+        cycle: 0 // within N for long break
+      };
+
+      const PHASES = {
+        work: {
+          name: 'Work',
+          sub: 'Focus time',
+          colors: { bg1:'#ff9a9e', bg2:'#fad0c4', accent:'#ff5252' },
+        },
+        short: {
+          name: 'Short Break',
+          sub: 'Breathe & stretch',
+          colors: { bg1:'#a8ff78', bg2:'#78ffd6', accent:'#2ecc71' },
+        },
+        long: {
+          name: 'Long Break',
+          sub: 'Recharge',
+          colors: { bg1:'#a18cd1', bg2:'#fbc2eb', accent:'#7e5bef' },
+        }
+      };
+
+      init();
+
+      function init(){
+        // Populate settings UI
+        inWork.value = S.work;
+        inShort.value = S.short;
+        inLong.value = S.long;
+        inEvery.value = S.every;
+        inAuto.checked = S.auto;
+        inVolume.value = S.volume;
+
+        setPhase('work', true);
+
+        // Event listeners
+        btnStart.addEventListener('click', toggleStart);
+        btnReset.addEventListener('click', resetTimer);
+        btnSkip.addEventListener('click', skipPhase);
+        btnSettings.addEventListener('click', ()=>settingsPanel.classList.toggle('open'));
+
+        btnWork.addEventListener('click', ()=> setPhase('work', true));
+        btnShort.addEventListener('click', ()=> setPhase('short', true));
+        btnLong.addEventListener('click', ()=> setPhase('long', true));
+
+        inWork.addEventListener('change', onSettingsChange);
+        inShort.addEventListener('change', onSettingsChange);
+        inLong.addEventListener('change', onSettingsChange);
+        inEvery.addEventListener('change', onSettingsChange);
+        inAuto.addEventListener('change', onSettingsChange);
+        inVolume.addEventListener('input', onSettingsChange);
+
+        document.addEventListener('keydown', e=>{
+          if (e.key === ' ') { e.preventDefault(); toggleStart(); }
+          if (e.key.toLowerCase() === 'r') resetTimer();
+          if (e.key.toLowerCase() === 'n') skipPhase();
+        });
+
+        // Ask for notification permission lazily on first start
+        if ('Notification' in window && Notification.permission === 'default') {
+          // We'll request when the user first starts the timer
+          btnStart.addEventListener('click', requestNotifyOnce, { once: true });
+        }
+
+        updateUI();
+      }
+
+      function requestNotifyOnce(){
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      }
+
+      function onSettingsChange(){
+        // sanitize
+        S.work = clamp(int(inWork.value, defaultSettings.work), 1, 180);
+        S.short = clamp(int(inShort.value, defaultSettings.short), 1, 60);
+        S.long = clamp(int(inLong.value, defaultSettings.long), 1, 120);
+        S.every = clamp(int(inEvery.value, defaultSettings.every), 2, 12);
+        S.auto = !!inAuto.checked;
+        S.volume = clamp(int(inVolume.value, defaultSettings.volume), 0, 100);
+        saveSettings(S);
+
+        // If current phase changed durations, adjust total/remaining only if not running
+        if (!state.running) {
+          const m = getPhaseMinutes(state.phase);
+          state.total = m * 60 * 1000;
+          state.remaining = Math.min(state.remaining, state.total);
+          updateUI();
+        }
+      }
+
+      function setPhase(phase, reset=true){
+        state.phase = phase;
+        const minutes = getPhaseMinutes(phase);
+        if (reset){
+          state.running = false;
+          clearInterval(state.interval);
+          state.total = minutes * 60 * 1000;
+          state.remaining = state.total;
+          btnStart.textContent = 'Start';
+        }
+        // Update colors and labels
+        applyTheme(PHASES[phase].colors);
+        phaseEl.textContent = PHASES[phase].name;
+        subEl.textContent = PHASES[phase].sub;
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+        updateUI();
+      }
+
+      function getPhaseMinutes(phase){
+        if (phase === 'work') return S.work;
+        if (phase === 'short') return S.short;
+        if (phase === 'long') return S.long;
+        return S.work;
+      }
+
+      function applyTheme(colors){
+        const root = document.documentElement;
+        root.style.setProperty('--bg1', colors.bg1);
+        root.style.setProperty('--bg2', colors.bg2);
+        root.style.setProperty('--accent', colors.accent);
+        document.querySelector('.dot').style.boxShadow = `0 0 0 6px rgba(255,255,255,0.35), 0 0 24px ${colors.accent}`;
+      }
+
+      function toggleStart(){
+        if (state.running){
+          pauseTimer();
+        } else {
+          startTimer();
+        }
+      }
+
+      function startTimer(){
+        if (state.running) return;
+        state.running = true;
+        const now = Date.now();
+        state.endAt = now + state.remaining;
+        btnStart.textContent = 'Pause';
+        state.interval = setInterval(tick, 250);
+        tick(); // immediate update
+      }
+
+      function pauseTimer(){
+        if (!state.running) return;
+        state.running = false;
+        clearInterval(state.interval);
+        state.interval = null;
+        state.remaining = Math.max(0, state.endAt - Date.now());
+        btnStart.textContent = 'Start';
+        updateUI();
+      }
+
+      function resetTimer(){
+        const minutes = getPhaseMinutes(state.phase);
+        state.total = minutes * 60 * 1000;
+        state.remaining = state.total;
+        if (state.running){
+          const now = Date.now();
+          state.endAt = now + state.remaining;
+        }
+        updateUI();
+      }
+
+      function skipPhase(){
+        // Treat as complete and transition
+        completePhase();
+      }
+
+      function tick(){
+        const now = Date.now();
+        const remaining = state.endAt - now;
+        if (remaining <= 0){
+          state.remaining = 0;
+          updateUI();
+          completePhase();
+          return;
+        }
+        state.remaining = remaining;
+        updateUI();
+      }
+
+      function completePhase(){
+        clearInterval(state.interval);
+        state.interval = null;
+        state.running = false;
+
+        // Update stats if completing work
+        if (state.phase === 'work'){
+          state.completed += 1;
+          state.cycle = (state.cycle + 1) % S.every;
+        }
+
+        // Notify & sound
+        playChime();
+        notify(`${PHASES[state.phase].name} done`, nextPhaseName() + ' starting');
+
+        // Transition
+        if (state.phase === 'work'){
+          setPhase(state.cycle === 0 ? 'long' : 'short', true);
+        } else {
+          setPhase('work', true);
+        }
+
+        // Auto start next if enabled
+        if (S.auto){
+          startTimer();
+        }
+      }
+
+      function nextPhaseName(){
+        if (state.phase === 'work'){
+          return (state.cycle === 0 ? PHASES.long.name : PHASES.short.name);
+        }
+        return PHASES.work.name;
+      }
+
+      function updateUI(){
+        // Time and title
+        const sec = Math.ceil(state.remaining/1000);
+        const mm = Math.floor(sec / 60).toString().padStart(2,'0');
+        const ss = Math.floor(sec % 60).toString().padStart(2,'0');
+        timeEl.textContent = `${mm}:${ss}`;
+        document.title = `${mm}:${ss} • ${PHASES[state.phase].name} – Pomodoro`;
+
+        // Progress ring angle
+        const progress = 1 - (state.remaining / state.total);
+        const angle = (isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0) * 360;
+        document.documentElement.style.setProperty('--ring-angle', angle + 'deg');
+
+        // Stats
+        completedEl.textContent = state.completed;
+        const inCycle = state.phase === 'work' ? state.cycle : state.cycle; // display current index
+        cycleEl.textContent = `${inCycle}/${S.every}`;
+      }
+
+      function notify(title, body){
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') return;
+        try {
+          new Notification(title, { body });
+        } catch(e){}
+      }
+
+      function playChime(){
+        try{
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const vol = S.volume / 100;
+          const now = ctx.currentTime;
+          const master = ctx.createGain();
+          master.gain.value = 0.0001;
+          master.connect(ctx.destination);
+
+          // Simple pleasant triad arpeggio
+          const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+          notes.forEach((f, i)=>{
+            const o = ctx.createOscillator();
+            o.type = 'sine';
+            o.frequency.value = f;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, now + i*0.06);
+            g.gain.linearRampToValueAtTime(0.4*vol, now + i*0.06 + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.06 + 0.45);
+            o.connect(g).connect(master);
+            o.start(now + i*0.06);
+            o.stop(now + i*0.06 + 0.6);
+          });
+
+          // Fade in master quickly
+          master.gain.exponentialRampToValueAtTime(Math.max(0.0001, 1.0), now + 0.05);
+          master.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
+        }catch(e){}
+      }
+
+      function int(v, fallback){ const n = parseInt(v,10); return isNaN(n) ? fallback : n; }
+      function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+      function loadSettings(){
+        try{
+          const raw = localStorage.getItem('pomodoro.settings');
+          if (!raw) return {...defaultSettings};
+          const s = JSON.parse(raw);
+          return {...defaultSettings, ...s};
+        }catch(e){
+          return {...defaultSettings};
+        }
+      }
+      function saveSettings(s){
+        try{ localStorage.setItem('pomodoro.settings', JSON.stringify(s)); }catch(e){}
+      }
+    })();
+  </script>
+</body>
+</html>
